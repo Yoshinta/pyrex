@@ -38,15 +38,63 @@ class Glassware:
    """
    	A class to measure the eccentricity of a given NR waveform.
    """
-   def __init__(self,q,chi):
+   def __init__(self,q,chi,data_path,names):
         """
             Initiates Glassware class for non-spinning, low eccentricity, and mass ratio<=3 binaries.
+
+            Parameters
+            ----------
+            q           : {float}
+            		  Mass ratio.
+            chi         : {float}
+                      Dimensionless spin parameters.
+            data_path   : {str}
+                      Directory of the NR simulations.
+            names       : {str}
+                      Simulation names
+
+            Returns
+            ------
+            times     : []
+            		          Array of the sample time.
+            amp22	  : []
+            		          Array of the amplitude of the l=2, m=2 mode.
+            phase22   : []
+            		          Array of the phase of the l=e, m=e mode.
+            h22       : []            		          Array of the l=2, m=2 strain.
         """
-        if chi<0.0001:
+
+        if (abs(chi)==0.0):
             if q>=1 and q<=3:
                 self.q=q
                 self.chi=chi
+                self.data_path=data_path
+                self.names=names
             else:
                 error("Please correct your mass ratio, only for q<=3.")
         else:
             error("Please correct your spin, only for the non-spinning binaries, s1x=s1y=s1z=s2x=s2y=s2z=0.")
+
+   def components(self,time_peak):
+        """
+            Computes and align the amplitude, phase, strain of the l=2, m=2 mode of NR waveforms.
+
+            Parameters
+            ----------
+            time_peak   : {float}
+                        The maximum amplitude before alignment.
+       """
+
+        time,amp,phase,h22=t_align(self.names,self.data_path,time_peak)
+        self.time=time
+        self.amp=amp
+        self.phase=phase
+        self.h22=h22
+
+   def compute_e_from_omega(self):
+       """
+           Computes eccentricity from omega asa function in time (see Husa).
+       """
+
+       e_omega=measure_e_omega(self.time,self.h22)
+       self.e_omega=e_omega

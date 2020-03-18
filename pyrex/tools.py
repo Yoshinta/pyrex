@@ -75,7 +75,7 @@ def get_components(data_path):
      phase22 = unwrap(angle(h22))
      return times,amp22,phase22,h22
 
-def t_align(names,t_peak,dt=0.4,t_chopped=-50):
+def t_align(names,data_path,t_peak,dt=0.4,t_chopped=-50):
     """
         Align waveform such that the peak amplitude is at t=0 and chopped -50M before merger (max t).
         Modify the delta t of every waveform with the same number.
@@ -171,7 +171,7 @@ def interp_omega(time_circular,time_eccentric,omega_circular):
     """
 
     interp_omega=spline(time_circular,omega_circular)
-    omega_interp=interp_omega(time_high_e)
+    omega_interp=interp_omega(time_eccentric)
     return omega_interp
 
 def f_sin(time_sample, freq, amplitude, phase, offset):
@@ -324,3 +324,29 @@ def compute_residual(time_sample,component,deg=4):
     res=B_t-B_sec
 
     return res, B_sec
+
+def measure_e_omega(time,h22):
+    """
+        Computes the eccentricity from omega (see Husa08).
+
+        Parameters
+        ----------
+        time    : []
+                Arrays of time samples.
+        h22     : []
+                Arrays of the strain.
+
+
+        Returns
+        ------
+        e_omg   : []
+                Array of eccenntricity omega as time function.
+
+    """
+    e_omg=[]
+    for i in range(len(time)):
+        omega_circular=compute_omega(time[0],h22[0])
+        omega_high_e=compute_omega(time[i],h22[i])
+        omega_c_interp=interp_omega(time[0],time[i],omega_circular)
+        e_omg.append((omega_high_e-omega_c_interp)/(2*(omega_c_interp)))
+    return e_omg
