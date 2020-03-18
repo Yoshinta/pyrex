@@ -1,0 +1,10 @@
+## Mac Specific
+._.DS_Store
+.DS_Store
+
+
+##Python specific
+*.egg-info
+eggs
+*.pyc
+
