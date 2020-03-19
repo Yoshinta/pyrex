@@ -91,10 +91,19 @@ class Glassware:
         self.phase=phase
         self.h22=h22
 
+        omega=[]
+        for i in range(len(self.time)):
+            omega.append(compute_omega(self.time[i],self.h22[i]))
+        self.omega=asarray(omega)
+
    def compute_e_from_omega(self):
        """
            Computes eccentricity from omega asa function in time (see Husa).
        """
-
-       e_omega=measure_e_omega(self.time,self.h22)
-       self.e_omega=e_omega
+       e_omega=[]
+       try:
+           for i in range(len(self.time)):
+               e_omega.append(find_e_omega(self.omega[i],self.omega[0],self.time[i],self.time[0]))
+       except:
+           e_omega=measure_e_omega(self.time,self.h22)
+       self.e_omega=asarray(e_omega)

@@ -35,7 +35,7 @@ import glob
 import h5py
 from pyrex.decor import *
 from scipy.optimize import curve_fit
-from scipy.signal import argrelextrema
+from scipy.signal import argrelextrema, find_peaks, savgol_filter
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import warnings
 warnings.filterwarnings('ignore')
@@ -170,8 +170,8 @@ def interp_omega(time_circular,time_eccentric,omega_circular):
                     1 dimensional array of the interpolated omega circular following time sample of the eccentric data.
     """
 
-    interp_omega=spline(time_circular,omega_circular)
-    omega_interp=interp_omega(time_eccentric)
+    interpol=spline(time_circular,omega_circular)
+    omega_interp=interpol(time_eccentric)
     return omega_interp
 
 def f_sin(time_sample, freq, amplitude, phase, offset):
@@ -223,7 +223,7 @@ def fit_sin(time_sample, data):
     fit_result=f_sin(sqrt(t),*popt)
     return popt,fit_result
 
-def find_local(data,local_min=True):
+def find_locals(data,local_min=True,sfilter=True):
     """
         Find local minima/maxima of a given data.
 
@@ -231,20 +231,25 @@ def find_local(data,local_min=True):
         ----------
         data        : []
                     1 dimensional array of data.
-        local_min   : []
+        local_min   : bool
                     If True, find local minima, otherwise local maxima. Default=True.
-
+        sfilter      : bool
+                    If True, filter to remove noise will be applied (smooth curve) with savgol filter. Default=True.
         Returns
         ------
         local_array  : []
                     1 dimensional array of local minima/maxima from a given function.
 
     """
+    if filter:
+        new_data = savgol_filter(data, 501, 2)
+    else:
+        new_data=data
 
     if local_min:
-        local=argrelextrema(data,less)
+        local=argrelextrema(new_data,less)
     else:
-        local=argrelextrema(data,greater)
+        local=argrelextrema(new_data,greater)
     local_array=asarray(local).reshape(len(local[0]))
     return local_array
 
@@ -290,7 +295,7 @@ def find_intercept(x,y,y_to_find):
                 1 dimensional array of the x values from a given -y_to_find data.
 
     """
-    if y_to_find<=0:
+    if y_to_find<0:
         error("y_to_find is always positive.")
     else:
         roots_pos = find_roots(x, y-y_to_find)
@@ -325,6 +330,33 @@ def compute_residual(time_sample,component,deg=4):
 
     return res, B_sec
 
+def find_e_omega(omega,omega_circular,time,time_circular):
+    """
+        Computes eccentricity from omega (e_omega) from a set of omega data.
+
+        Parameters
+        ----------
+        omega            : []
+                        1 dimensional array of omega data.
+        omega_circular   : []
+                        1 dimensional array of omega for zero eccentricity data.
+        time            : []
+                        1 dimensional array of time samples of the corresponding omega data.
+        time_circular   : []
+                        1 dimensional array of time samples of the corresponding omega_circular data.
+
+
+        Returns
+        ------
+        e_omg           : []
+                        1 dimensional array of e_omega.
+
+    """
+
+    omega_c_interp=interp_omega(time_circular,time,omega_circular)
+    e_omg=(omega-omega_c_interp)/(2*(omega_c_interp))
+    return e_omg
+
 def measure_e_omega(time,h22):
     """
         Computes the eccentricity from omega (see Husa08).
@@ -343,10 +375,57 @@ def measure_e_omega(time,h22):
                 Array of eccenntricity omega as time function.
 
     """
+
     e_omg=[]
     for i in range(len(time)):
         omega_circular=compute_omega(time[0],h22[0])
         omega_high_e=compute_omega(time[i],h22[i])
-        omega_c_interp=interp_omega(time[0],time[i],omega_circular)
-        e_omg.append((omega_high_e-omega_c_interp)/(2*(omega_c_interp)))
+        e_omg.append(find_e_omega(omega_high_e,omega_circular,time[0],time[i]))
     return e_omg
+
+def time_window_greater(time,time_point,data):
+    """
+        Windows data in time series greater than a point in time.
+        This function cuts early signal in time.
+
+        Parameters
+        ----------
+        time            : []
+                        1 dimensional array of time samples.
+        time_point      : {float}
+                        Minimum time in the data after the window.
+        data            : []
+                        Data to be put in the window.
+
+
+        Returns
+        ------
+        new_data       : []
+                        Data in the window.
+
+    """
+    window=where(time>time_point)
+    new_data=data[window]
+    return new_data
+
+def noisy_peaks(data,prominence=0.1):
+    """
+        Finds local maxima in a noisy data.
+
+        Parameters
+        ----------
+        data        : []
+                    1 dimensional array to find its peak.
+        prominence  : {float}
+                    The minimum height necessary to descend to get from the summit to any higher terrain.
+                    Default=0.1.
+
+        Returns
+        ------
+        peaks       : []
+                    1 dimensional array that contains array numbers of the local maxima (peaks) in the noisy data.
+
+    """
+
+    peaks,_ = find_peaks(data,prominence=0.1)
+    return peaks
