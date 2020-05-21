@@ -96,14 +96,44 @@ class Glassware:
             omega.append(compute_omega(self.time[i],self.h22[i]))
         self.omega=asarray(omega)
 
-   def compute_e_from_omega(self):
+   def compute_e_from_omega(self,time_circular,omega_circular,h22_circular):
        """
            Computes eccentricity from omega asa function in time (see Husa).
+
+           Parameters
+           ----------
+           time_circular    : []
+                            1 dimensional array to of time samples in circular eccentricity.
+           omega_circular   : []
+                            1 dimensional array to of omega in circular eccentricity.
+           h22              : []
+                            1 dimensional array to of h22 in circular eccentricity.
+
        """
        e_omega=[]
        try:
            for i in range(len(self.time)):
-               e_omega.append(find_e_omega(self.omega[i],self.omega[0],self.time[i],self.time[0]))
+               e_omega.append(find_e_omega(self.omega[i],omega_circular,self.time[i],time_circular))
        except:
-           e_omega=measure_e_omega(self.time,self.h22)
+           e_omega=measure_e_omega(self.time,self.h22,time_circular,h22_circular)
        self.e_omega=asarray(e_omega)
+
+   def compute_e_from_amplitude(self,time_circular,amplitude_circular):
+          #"""
+        #               Computes eccentricity from omega asa function in time (see Husa).
+
+        #               Parameters
+        #               ----------
+        #               time_circular    : []
+        #               1 dimensional array to of time samples in amplitude eccentricity.
+        #               amplitude_circular   : []
+        #               1 dimensional array to of amplitude in circular eccentricity.
+         #"""
+
+      e_amplitude=[]
+      try:
+          for i in range(len(self.time)):
+              e_amplitude.append(find_e_amp(self.amp[i],amplitude_circular,self.time[i],time_circular))
+      except:
+          e_amplitude=measure_e_amp(self.time,self.amp,time_circular,amplitude_circular)
+      self.e_amp=asarray(e_amplitude)

@@ -197,7 +197,7 @@ def f_sin(time_sample, freq, amplitude, phase, offset):
                     1 dimensional array of a sinusoidal function.
 
     """
-    sin_func=amplitude*sin(t * freq + phase)+ offset
+    sin_func=amplitude*sin(time_sample * freq + phase)+ offset
     return sin_func
 
 def fit_sin(time_sample, data):
@@ -219,8 +219,8 @@ def fit_sin(time_sample, data):
                     1 dimensional array of the fitted data.
     """
 
-    popt,pcov = scipy.optimize.curve_fit(f_sin, sqrt(t), data)
-    fit_result=f_sin(sqrt(t),*popt)
+    popt,pcov = curve_fit(f_sin, sqrt(time_sample), data)
+    fit_result=f_sin(sqrt(time_sample),*popt)
     return popt,fit_result
 
 def find_locals(data,local_min=True,sfilter=True):
@@ -309,7 +309,7 @@ def compute_residual(time_sample,component,deg=4):
         Parameters
         ----------
         time_sample : []
-                    1 dimensional array of time sample.
+                    1 dimensional positive array of time sample.
         component   : []
                     1 dimensional array of the component to be fitted.
         deg         : {int}
@@ -322,13 +322,41 @@ def compute_residual(time_sample,component,deg=4):
         B_sec       : []
                     1 dimensional array of a polynomial function fitted to the data.
     """
-
+    time_sample=abs(time_sample)
     B_t=component
-    p=poly1d(polyfit(sqrt(time_comp),B_t,deg=deg))
-    B_sec=p(sqrt(time_comp))
+    p=poly1d(polyfit(sqrt(time_sample),B_t,deg=deg))
+    B_sec=p(sqrt(time_sample))
     res=B_t-B_sec
 
     return res, B_sec
+
+def find_e_amp(ampli,ampli_circular,time,time_circular):
+    """
+        Computes eccentricity from a set of amplitude data.
+        
+        Parameters
+        ----------
+        ampli            : []
+        1 dimensional array of ampli data.
+        ampli_circular   : []
+        1 dimensional array of ampli for zero eccentricity data.
+        time            : []
+        1 dimensional array of time samples of the corresponding ampli data.
+        time_circular   : []
+        1 dimensional array of time samples of the corresponding ampli_circular data.
+        
+        
+        Returns
+        ------
+        e_ampli           : []
+        1 dimensional array of e_ampli.
+        
+        """
+    
+    ampli_c_interp=interp_omega(time_circular,time,ampli_circular)
+    e_ampli=(ampli-ampli_c_interp)/(2*ampli_c_interp)
+    return e_ampli
+
 
 def find_e_omega(omega,omega_circular,time,time_circular):
     """
@@ -357,16 +385,48 @@ def find_e_omega(omega,omega_circular,time,time_circular):
     e_omg=(omega-omega_c_interp)/(2*(omega_c_interp))
     return e_omg
 
-def measure_e_omega(time,h22):
+def measure_e_amp(time,ampli,time_circular,amp_circular):
+    """
+        Computes the eccentricity from amplitude.
+        
+        Parameters
+        ----------
+        time             : []
+        Arrays of time samples.
+        ampli            : []
+        Arrays of the amplitude.
+        time_circular    : []
+        1 dimensional array to of time samples in circular eccentricity.
+        amp_circular   : []
+        1 dimensional array to of amp in circular eccentricity.
+        
+        
+        Returns
+        ------
+        e_omg   : []
+        Array of eccenntricity omega as time function.
+        
+        """
+    
+    e_amp=[]
+    for i in range(len(time)):        
+        e_amp.append(find_e_amp(ampli,amp_circular,time_circular,time[i]))
+    return e_amp
+
+def measure_e_omega(time,h22,time_circular,h22_circular):
     """
         Computes the eccentricity from omega (see Husa08).
 
         Parameters
         ----------
-        time    : []
-                Arrays of time samples.
-        h22     : []
-                Arrays of the strain.
+        time             : []
+                         Arrays of time samples.
+        h22              : []
+                         Arrays of the strain.
+        time_circular    : []
+                         1 dimensional array to of time samples in circular eccentricity.
+        h22_circular   : []
+                         1 dimensional array to of h22 in circular eccentricity.
 
 
         Returns
@@ -378,9 +438,9 @@ def measure_e_omega(time,h22):
 
     e_omg=[]
     for i in range(len(time)):
-        omega_circular=compute_omega(time[0],h22[0])
+        omega_circular=compute_omega(time_circular,h22_circular)
         omega_high_e=compute_omega(time[i],h22[i])
-        e_omg.append(find_e_omega(omega_high_e,omega_circular,time[0],time[i]))
+        e_omg.append(find_e_omega(omega_high_e,omega_circular,time_circular,time[i]))
     return e_omg
 
 def time_window_greater(time,time_point,data):
