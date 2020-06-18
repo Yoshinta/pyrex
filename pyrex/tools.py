@@ -72,10 +72,10 @@ def get_components(data_path):
      h22 = h22[:,1] + 1.j * h22[:,2]
      h2m2 = h2m2[:,1] + 1.j * h2m2[:,2]
      amp22=abs(h22)
-     phase22 = unwrap(angle(h22))
+     phase22 = -unwrap(angle(h22))
      return times,amp22,phase22,h22
 
-def t_align(names,data_path,t_peak,dt=0.4,t_chopped=-50):
+def t_align(names,data_path,dt=0.4,t_junk=250.,t_circ=-50):
     """
         Align waveform such that the peak amplitude is at t=0 and chopped -50M before merger (max t).
         Modify the delta t of every waveform with the same number.
@@ -110,25 +110,27 @@ def t_align(names,data_path,t_peak,dt=0.4,t_chopped=-50):
     time_window=[]
 
     for i in range(len(names)):
-        temp_time,amps,phas,h22c=get_components(data_path+names[i])
-        tim_r=temp_time-temp_time[argmax(amps)]
-        new_time=(arange(-t_peak[i],tim_r[::-1][0],dt))
+        temp_time,temp_amp,temp_phase,temp_h22=get_components(data_path+names[i])
+        timeshift=temp_time-temp_time[argmax(temp_amp)]
+        shifted_time=arange(timeshift[0],timeshift[::-1][0],dt)
 
-        amp_inter=spline(tim_r,amps)
-        phase_inter=spline(tim_r,phas)
-        h22r_inter=spline(tim_r,h22c.real)
-        h22i_inter=spline(tim_r,h22c.imag)
+        amp_inter=spline(timeshift,temp_amp)
+        phase_inter=spline(timeshift,temp_phase)
+        h22r_inter=spline(timeshift,temp_h22.real)
+        h22i_inter=spline(timeshift,temp_h22.imag)
 
-        amp=amp_inter(new_time)
-        phase=phase_inter(new_time)
-        h22r=h22r_inter(new_time)
-        h22i=h22i_inter(new_time)
+        amp=amp_inter(shifted_time)
+        phase=phase_inter(shifted_time)
+        h22r=h22r_inter(shifted_time)
+        h22i=h22i_inter(shifted_time)
 
-        array_late_inspiral=int(argmax(amp)+t_chopped/dt)
-        time_window.append(new_time[:array_late_inspiral])
-        amp_window.append(amp[:array_late_inspiral])
-        phase_window.append(phase[:array_late_inspiral])
-        h22_window.append(h22r[:array_late_inspiral]+1j*h22i[:array_late_inspiral])
+        array_early_inspiral=int(t_junk/dt)                   #remove the junk radiation
+        array_late_inspiral=int(argmax(amp)+t_circ/dt)   #due to circularization for low q & low e binaries, remove some t before merger.
+
+        time_window.append(shifted_time[array_early_inspiral:array_late_inspiral])
+        amp_window.append(amp[array_early_inspiral:array_late_inspiral])
+        h22_window.append(h22r[array_early_inspiral:array_late_inspiral]+1j*h22i[array_early_inspiral:array_late_inspiral])
+        phase_window.append(-unwrap(angle(h22_window[i])))
     return asarray(time_window), asarray(amp_window), asarray(phase_window), asarray(h22_window)
 
 def compute_omega(time_sample,h22):
@@ -174,7 +176,8 @@ def interp_omega(time_circular,time_eccentric,omega_circular):
     omega_interp=interpol(time_eccentric)
     return omega_interp
 
-def f_sin(time_sample, freq, amplitude, phase, offset):
+def f_sin(xdata, amplitude, B, freq, phase):
+    #TODO: fix the function description.
     """
         Computes sinusoidal function given the input parameters.
 
@@ -197,10 +200,11 @@ def f_sin(time_sample, freq, amplitude, phase, offset):
                     1 dimensional array of a sinusoidal function.
 
     """
-    sin_func=amplitude*sin(time_sample * freq + phase)+ offset
+    sin_func=amplitude*exp(B*xdata)*sin(xdata*freq/(2*pi)+phase)
+    #sin_func=amplitude*sin(time_sample * freq + phase)+ offset
     return sin_func
 
-def fit_sin(time_sample, data):
+def fit_sin(xdata, ydata):
     """
         Computes the optimize curve fitting for a sinusoidal function with sqrt(time_sample).
 
@@ -219,9 +223,15 @@ def fit_sin(time_sample, data):
                     1 dimensional array of the fitted data.
     """
 
-    popt,pcov = curve_fit(f_sin, sqrt(time_sample), data)
-    fit_result=f_sin(sqrt(time_sample),*popt)
+    popt,pcov = curve_fit(f_sin, xdata, ydata)
+    fit_result=f_sin(xdata,*popt)
     return popt,fit_result
+
+def fitting_eccentric_function(pwr,e_amp_phase,interpol_omeg_c):
+    x=interpol_omeg_c**pwr-interpol_omeg_c[0]**pwr
+    y=e_amp_phase
+    par,fsn=fit_sin(x,y)
+    return par,fsn
 
 def find_locals(data,local_min=True,sfilter=True):
     """
@@ -331,9 +341,10 @@ def compute_residual(time_sample,component,deg=4):
     return res, B_sec
 
 def find_e_amp(ampli,ampli_circular,time,time_circular):
+    #TODO: delete this function
     """
         Computes eccentricity from a set of amplitude data.
-        
+
         Parameters
         ----------
         ampli            : []
@@ -344,21 +355,22 @@ def find_e_amp(ampli,ampli_circular,time,time_circular):
         1 dimensional array of time samples of the corresponding ampli data.
         time_circular   : []
         1 dimensional array of time samples of the corresponding ampli_circular data.
-        
-        
+
+
         Returns
         ------
         e_ampli           : []
         1 dimensional array of e_ampli.
-        
+
         """
-    
+
     ampli_c_interp=interp_omega(time_circular,time,ampli_circular)
     e_ampli=(ampli-ampli_c_interp)/(2*ampli_c_interp)
     return e_ampli
 
 
 def find_e_omega(omega,omega_circular,time,time_circular):
+    #TODO: delete this function
     """
         Computes eccentricity from omega (e_omega) from a set of omega data.
 
@@ -388,7 +400,7 @@ def find_e_omega(omega,omega_circular,time,time_circular):
 def measure_e_amp(time,ampli,time_circular,amp_circular):
     """
         Computes the eccentricity from amplitude.
-        
+
         Parameters
         ----------
         time             : []
@@ -399,17 +411,17 @@ def measure_e_amp(time,ampli,time_circular,amp_circular):
         1 dimensional array to of time samples in circular eccentricity.
         amp_circular   : []
         1 dimensional array to of amp in circular eccentricity.
-        
-        
+
+
         Returns
         ------
         e_omg   : []
         Array of eccenntricity omega as time function.
-        
+
         """
-    
+
     e_amp=[]
-    for i in range(len(time)):        
+    for i in range(len(time)):
         e_amp.append(find_e_amp(ampli,amp_circular,time_circular,time[i]))
     return e_amp
 

@@ -95,3 +95,19 @@ def check_total_spin(spinx,spiny,spinz):
         spiny=spiny/(tspin+0.0001)
         spinz=spinz/(tspin+0.0001)
     return spinx,spiny,spinz
+
+def filter_dicts(alldata,key,val,target):
+    '''
+        Obtain the value of target if the value of key is val in alldata.
+    '''
+    seen=set()
+    return [d[target] for d in alldata if d[key]==val]
+
+def checkIfDuplicates(listofElems):
+    '''
+        Check if given list contains any duplicates.
+    '''
+    for elem in listofElems:
+        if listofElems.count(elem)>1:
+            return True
+    return False
