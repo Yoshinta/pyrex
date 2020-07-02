@@ -31,21 +31,86 @@ __author__ = 'Yoshinta Setyawati'
 
 from numpy import *
 import h5py
-
+import pickle
 
 def read_HDF5(file_dir):
     """
-        Read a HDF5 file.
+        Read an HDF5 file.
         Parameters
         ----------
-        The directory of the file.
+        file_dir    : The directory of the file.
 
         Returns
         ------
-        The read file with keys.
+        f           : The read file with keys.
     """
     f=h5py.File(file_dir,'r')
     return f
+
+def write_HDF5(outfname,data_dict):
+    """
+        Write an HDF5 file.
+        Parameters
+        ----------
+        outfname  : The directory of the output file.
+        data_dict : The data variables to be written.
+
+        Returns
+        ------
+        The written file with keys in outfname.
+    """
+    fh5 = h5py.File(outfname, 'w')
+    for var in data_dict.keys():
+        print(var)
+        try:
+            print(dtype(data_dict[var][0]),var)
+            fh5.create_dataset(var, data = asarray(data_dict[var]))
+        except:
+            print(type(data_dict[var]),var)
+            if type(data_dict[var])!=list:
+                if type(data_dict[var])!=str:
+                    fh5.create_dataset(var, data = asarray(data_dict[var]))
+                else:
+                    asciiList = [n.encode("ascii", "ignore") for n in data_dict[var]]
+                    fh5.create_dataset(var, (len(asciiList),1),'S10', asciiList)
+            elif type(data_dict[var][0])==list:
+                fh5.create_dataset(var, data = asarray(data_dict[var]))
+            else:
+                asciiList = [n.encode("ascii", "ignore") for n in data_dict[var]]
+                fh5.create_dataset(var, (len(asciiList),1),'S10', asciiList)
+    fh5.close()
+
+def read_pkl(file_dir):
+    """
+        Read a pickle file.
+        Parameters
+        ----------
+        file_dir    : The directory of the file.
+
+        Returns
+        ------
+        f           : The read file with keys.
+    """
+    with open(file_dir, 'rb') as f:
+        data = pickle.load(f)
+    return data
+
+def write_pkl(outfname,data_dict):
+    """
+        Write a pickle file.
+        Parameters
+        ----------
+        outfname  : The directory of the output file.
+        data_dict : The data variables to be written.
+
+        Returns
+        ------
+        The written file with keys in outfname.
+    """
+
+    f = open(outfname,"wb")
+    pickle.dump(data_dict,f)
+    f.close()
 
 def masses_from_eta(eta,total_mass=50.,**unused):
     """
@@ -66,6 +131,26 @@ def masses_from_eta(eta,total_mass=50.,**unused):
     mass2_from_eta = -(-total_mass+sqrt((total_mass**2)-(4.*m1m2_from_eta)))/2
     mass1_from_eta = -(-total_mass-sqrt((total_mass**2)-(4.*m1m2_from_eta)))/2
     return mass1_from_eta,mass2_from_eta
+
+def masses_from_q(q,total_mass=50.):
+    """
+        Computes mass1 and mass2 from eta and total mass.
+
+        Parameters
+        ----------
+        q       : {float}
+                q = m1/m2, where m1>m2.
+        total_m : {float}
+                Total mass m1+m2 of the system in MSun.
+
+        Returns
+        ------
+        mass1 and mass2 in MSun.
+    """
+
+    mass1 = q/(1+q)*total_mass
+    mass2 = total_mass-mass1
+    return mass1,mass2
 
 def check_total_spin(spinx,spiny,spinz):
     """
@@ -105,7 +190,7 @@ def filter_dicts(alldata,key,val,target):
 
 def checkIfDuplicates(listofElems):
     '''
-        Check if given list contains any duplicates.
+        Check if the given list contains any duplicates.
     '''
     for elem in listofElems:
         if listofElems.count(elem)>1:

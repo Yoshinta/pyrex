@@ -30,13 +30,17 @@
 __author__ = 'Yoshinta Setyawati'
 
 from numpy import *
+import lalsimulation as ls
+import lal
 import os
 import glob
 import h5py
 from pyrex.decor import *
+from pyrex.basics import *
 from scipy.optimize import curve_fit
 from scipy.signal import argrelextrema, find_peaks, savgol_filter
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
+from scipy import integrate
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -227,8 +231,8 @@ def fit_sin(xdata, ydata):
     fit_result=f_sin(xdata,*popt)
     return popt,fit_result
 
-def fitting_eccentric_function(pwr,e_amp_phase,interpol_omeg_c):
-    x=interpol_omeg_c**pwr-interpol_omeg_c[0]**pwr
+def fitting_eccentric_function(pwr,e_amp_phase,interpol_circ):
+    x=(interpol_circ)**pwr-(interpol_circ[0])**pwr
     y=e_amp_phase
     par,fsn=fit_sin(x,y)
     return par,fsn
@@ -501,3 +505,129 @@ def noisy_peaks(data,prominence=0.1):
 
     peaks,_ = find_peaks(data,prominence=0.1)
     return peaks
+
+def find_Y22(iota,coa_phi):
+    '''
+        Compute Y22 of spherical harmonics waveform.
+        Source: https://arxiv.org/abs/0709.0093.
+        Parameters
+        ----------
+        iota: {float}
+                Inclination angle (rad).
+        phi : {float}
+                Phase of coalescence (rad).
+
+        Returns
+        ------
+        Y22 : Spherical harmonics of the l=2, m=2 mode.
+    '''
+    Y22=np.sqrt(5./(64*pi))*((1+cos(iota))**2)*exp(2*coa_phi*1j)
+    return Y22
+
+def lal_waves(q,total_mass,approximant,f_lower,distance,inclination,coa_phase,**kwargs):
+    m1,m2=masses_from_q(q,total_mass)
+    spin1x=spin1y=spin1z=spin2x=spin2y=spin2z=0.
+    long_asc_nodes=0.
+    eccentricity=0.
+    mean_per_ano=0.
+    f_ref=f_lower
+    f_max=2048.
+    lal_pars=None
+    aprox=eval('ls.'+str(approximant))
+    if 'delta_t' and 'delta_f' in kwargs:
+        error("Please provide delta_t or delta_f.")
+    elif 'delta_t' in kwargs and 'delta_f' not in kwargs:
+        hp1,hc1=ls.SimInspiralChooseTDWaveform(lal.MSUN_SI*m1,
+               lal.MSUN_SI*m2,
+               spin1x, spin1y, spin1z,
+               spin2x, spin2y, spin2z,
+               lal.PC_SI*distance*1e6,
+               inclination, coa_phase,
+               long_asc_nodes, eccentricity, mean_per_ano,
+               kwargs['delta_t'], f_lower, f_ref,
+               lal_pars,aprox)
+
+        hp = -hp1.data.data
+        hc = -hc1.data.data
+        Ttot = hp1.data.length * hp1.deltaT
+        t1 = arange(hp1.data.length, dtype=float) * hp1.deltaT
+        t1 = t1+hp1.epoch
+        x=t1-t1[argmax(abs(hp+hc*1j))]
+
+    elif 'delta_f' in kwargs and 'delta_t' not in kwargs:
+        hp1,hc1=ls.SimInspiralChooseFDWaveform(lal.MSUN_SI*m1,
+               lal.MSUN_SI*m2,
+               spin1x, spin1y, spin1z,
+               spin2x, spin2y, spin2z,
+               lal.PC_SI*distance*1e6,
+               inclination, coa_phase,
+               long_asc_nodes, eccentricity, mean_per_ano,
+               kwargs['delta_f'], f_lower, f_max, f_ref,
+               lal_pars,aprox)
+        hp = -hp1.data.data
+        hc = -hc1.data.data
+        Ftot = hp1.data.length * hp1.deltaF
+        t1 = arange(hp1.data.length, dtype=float) * hp1.deltaF
+        t1 = t1+hp1.epoch
+        x=t1
+    else:
+        error("Please provide delta_t or delta_f.")
+    return x,hp,hc
+
+def lalwaves_to_nr_scale(q,total_mass,approximant,f_low,distance,iota,coa_phi,sample_rate):
+    delta_t=1./sample_rate
+    amp_scale=total_mass*lal.MTSUN_SI*lal.C_SI/(1e6*distance*lal.PC_SI)
+    sample_times=hp,hc=lal_waves(q,total_mass,approximant,f_low,distance,iota,coa_phi,delta_t)
+    Y22=find_Y22(iota,coa_phi)
+    hs=(hp+hc*1j)/(amp_scale*Y22)
+
+    time=sample_times/(total_mass*lal.MTSUN_SI)
+    amp=abs(hs)
+    phase=-unwrap(angle(hs))
+    omega=compute_omega(time,hs)
+    return time,amp,phase,omega
+
+def eccentric_from_circular(q,par_omega,par_amp,approximant,new_time,total_mass=50.,distance=1.,iota=0.,coa_phi=0.,f_low=25.,sample_rate=4096.):
+
+    phase_pwr=-59./24
+    amp_pwr=-83./24
+
+    time,amp,phase,omega=lalwaves_to_nr_scale(q,total_mass,approximant,f_low,distance,iota,coa_phi,sample_rate)
+
+    interp_omega=spline(time,omega)
+    interp_amp=spline(time,amp)
+    omega_circ=-interp_omega(new_time)
+    amp_circ=interp_amp(new_time)
+
+    x_omega=(omega_circ)**phase_pwr-((omega_circ[0])**phase_pwr)
+    x_amp=(amp_circ)**amp_pwr-(amp_circ[0])**amp_pwr
+
+    fit_ex_omega=f_sin(x_omega,par_omega[0],par_omega[1],par_omega[2],par_omega[3])
+    fit_ex_amp=f_sin(x_amp,par_amp[0],par_amp[1],par_amp[2],par_amp[3])
+    omega_rec=fit_ex_omega*2*omega_circ+omega_circ
+    phase_rec=integrate.cumtrapz(omega_rec,new_time,initial=0)
+    amp_rec=fit_ex_amp*2*amp_circ+amp_circ
+    return amp_rec,phase_rec
+
+#def compute_match_waves(new_time, test_time, test_h22, amp_recon,phase_recon,f_lower,sample_rate,psd='aLIGO'):
+
+#    delta_t=1./sample_rate
+#    realh=spline(test_time,np.real(test_h22))
+#    imagh=spline(test_time,np.imag(test_h22))
+#    h_reckon=amp_recon*exp(phase_recon*1j)
+
+#    analytic_real_tser=TimeSeries(real(h_reckon),delta_t=delta_t)
+#    nr_real_tser=TimeSeries(realh(new_time),delta_t=delta_t)
+
+#    if psd=='aLIGO':
+#        tlen=len(h2o_tser)
+#        delta_f = 1.0 / nr_real_tser.duration
+#        flen = tlen//2 + 1
+#        psd = aLIGOZeroDetHighPower(flen, delta_f, f_lower)
+#    else:
+#        psd =None
+
+#    match22=match(analytic_real_tser,nr_real_tser,psd=psd,low_frequency_cutoff=f_lower)[0]
+#    overlap_amp=overlap(TimeSeries(amp_recon,delta_t=delta_t),TimeSeries(abs(realh(new_time)+imagh(new_time)*1j),delta_t=delta_t),psd=psd,low_frequency_cutoff=f_lower)
+#    overlap_phase=overlap(TimeSeries(phase_recon,delta_t=delta_t),TimeSeries(-np.unwrap(np.angle(realh(new_time)+imagh(new_time)*1j)),delta_t=delta_t),psd=psd,low_frequency_cutoff=f_lower)
+#    return match22,overlap_amp,overlap_phase

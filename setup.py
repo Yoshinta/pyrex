@@ -41,6 +41,7 @@ setup(name='pyrex',
       keywords=['numerical relativity', 'gravitational waves', 'waveform', 'eccentric', 'compact binary'],
       install_requires=[
         'jsonschema>=3.0.2',
+	'pickleshare==0.7.5',
         'scipy>=1.3.1',
         'h5py>=2.10',
         'matplotlib>=3.1.1',
