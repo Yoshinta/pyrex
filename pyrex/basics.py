@@ -32,6 +32,10 @@ __author__ = 'Yoshinta Setyawati'
 from numpy import *
 import h5py
 import pickle
+import glob
+import os
+from scipy import interpolate
+from pyrex.decor import *
 
 def read_HDF5(file_dir):
     """
@@ -196,3 +200,28 @@ def checkIfDuplicates(listofElems):
         if listofElems.count(elem)>1:
             return True
     return False
+
+def checkIfFilesExist(message,dirfile="../data/"):
+    '''
+        Check if pickle files exist.
+    '''
+    r=0
+    os.chdir(dirfile)
+    print(message)
+    for file in glob.glob("*.pkl"):
+        print(file)
+        r=r+1
+    if r<1:
+        error("No *pkl files found in " + str(dirfile) + " . Please run 'example/traindata.py' to produce the train data.")
+    if r>1:
+        error("Found " + str(r) + "*pkl files in " + dirfile + " . Please remove other *pkl files than the training data.")
+    else:
+        dfs=dirfile+str(file)
+    return dfs
+
+def interp1D(trainkey,trainval,testkey):
+    '''
+        Interpolate 1D.
+    '''
+    interp=interpolate.interp1d(trainkey,trainval)
+    return(interp(testkey))

@@ -84,6 +84,7 @@ class Glassware(object):
         self.components()
         self.compute_e_estimator()
         self.fit_model()
+        self.compute_xquant()
         #write and store the data
         data_dict=self.__dict__
         write_pkl(outfname,data_dict)
@@ -208,7 +209,8 @@ class Glassware(object):
        self.phi_amp=amp_params.T[3]
        self.fit_amp=fit_amp
 
-
-
-   #def save_quant(self):
-#       print(dict(self))
+   def compute_xquant(self):
+       xquant=[]
+       for i in range(len(self.names)):
+           xquant.append(find_x(self.time[i],self.omega[i],self.new_time))
+       self.x=xquant

@@ -32,8 +32,6 @@ __author__ = 'Yoshinta Setyawati'
 from numpy import *
 import lalsimulation as ls
 import lal
-import os
-import glob
 import h5py
 from pyrex.decor import *
 from pyrex.basics import *
@@ -521,8 +519,16 @@ def find_Y22(iota,coa_phi):
         ------
         Y22 : Spherical harmonics of the l=2, m=2 mode.
     '''
-    Y22=np.sqrt(5./(64*pi))*((1+cos(iota))**2)*exp(2*coa_phi*1j)
+    Y22=sqrt(5./(64*pi))*((1+cos(iota))**2)*exp(2*coa_phi*1j)
     return Y22
+
+def find_x(old_time,omega,new_time):
+    '''
+        Compute x at the beginning of new time array.
+    '''
+    interp_omega=spline(old_time,omega)
+    x=interp_omega(new_time[0])**(2./3)
+    return x
 
 def lal_waves(q,total_mass,approximant,f_lower,distance,inclination,coa_phase,**kwargs):
     m1,m2=masses_from_q(q,total_mass)
@@ -547,8 +553,8 @@ def lal_waves(q,total_mass,approximant,f_lower,distance,inclination,coa_phase,**
                kwargs['delta_t'], f_lower, f_ref,
                lal_pars,aprox)
 
-        hp = -hp1.data.data
-        hc = -hc1.data.data
+        hp = hp1.data.data
+        hc = hc1.data.data
         Ttot = hp1.data.length * hp1.deltaT
         t1 = arange(hp1.data.length, dtype=float) * hp1.deltaT
         t1 = t1+hp1.epoch
@@ -564,8 +570,8 @@ def lal_waves(q,total_mass,approximant,f_lower,distance,inclination,coa_phase,**
                long_asc_nodes, eccentricity, mean_per_ano,
                kwargs['delta_f'], f_lower, f_max, f_ref,
                lal_pars,aprox)
-        hp = -hp1.data.data
-        hc = -hc1.data.data
+        hp = hp1.data.data
+        hc = hc1.data.data
         Ftot = hp1.data.length * hp1.deltaF
         t1 = arange(hp1.data.length, dtype=float) * hp1.deltaF
         t1 = t1+hp1.epoch
@@ -575,24 +581,21 @@ def lal_waves(q,total_mass,approximant,f_lower,distance,inclination,coa_phase,**
     return x,hp,hc
 
 def lalwaves_to_nr_scale(q,total_mass,approximant,f_low,distance,iota,coa_phi,sample_rate):
-    delta_t=1./sample_rate
+    dt=1./sample_rate
+    #Beware: numerical error 1e-30 when return the scale back! More obvious on phase.
     amp_scale=total_mass*lal.MTSUN_SI*lal.C_SI/(1e6*distance*lal.PC_SI)
-    sample_times=hp,hc=lal_waves(q,total_mass,approximant,f_low,distance,iota,coa_phi,delta_t)
+    sample_times,hp,hc=lal_waves(q,total_mass,approximant,f_low,distance,iota,coa_phi,delta_t=dt)
+    h2=hp+hc*1j
     Y22=find_Y22(iota,coa_phi)
-    hs=(hp+hc*1j)/(amp_scale*Y22)
+    hs=h2/(amp_scale*Y22)
 
     time=sample_times/(total_mass*lal.MTSUN_SI)
     amp=abs(hs)
-    phase=-unwrap(angle(hs))
+    phase=unwrap(angle(hs))
     omega=compute_omega(time,hs)
     return time,amp,phase,omega
 
-def eccentric_from_circular(q,par_omega,par_amp,approximant,new_time,total_mass=50.,distance=1.,iota=0.,coa_phi=0.,f_low=25.,sample_rate=4096.):
-
-    phase_pwr=-59./24
-    amp_pwr=-83./24
-
-    time,amp,phase,omega=lalwaves_to_nr_scale(q,total_mass,approximant,f_low,distance,iota,coa_phi,sample_rate)
+def eccentric_from_circular(par_omega,par_amp,new_time,time,amp,phase,omega,phase_pwr=-59./24,amp_pwr=-83./24):
 
     interp_omega=spline(time,omega)
     interp_amp=spline(time,amp)
