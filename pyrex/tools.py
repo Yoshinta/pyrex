@@ -612,6 +612,37 @@ def eccentric_from_circular(par_omega,par_amp,new_time,time,amp,phase,omega,phas
     amp_rec=fit_ex_amp*2*amp_circ+amp_circ
     return amp_rec,phase_rec
 
+def get_noncirc_params(somedict):
+    ecc_q=[]
+    ecc_e=[]
+    ecc_x=[]
+    ecc_A_omega=[]
+    ecc_B_omega=[]
+    ecc_freq_omega=[]
+    ecc_phi_omega=[]
+    ecc_A_amp=[]
+    ecc_B_amp=[]
+    ecc_freq_amp=[]
+    ecc_phi_amp=[]
+
+    for i in range(len(somedict['names'])):
+        if somedict['e_ref'][i]>1e-3:
+            ecc_q.append(somedict['q'][i])
+            ecc_e.append(somedict['e_ref'][i])
+            ecc_x.append(somedict['x'][i])
+            ecc_A_omega.append(somedict['A_omega'][i])
+            ecc_B_omega.append(somedict['B_omega'][i])
+            ecc_freq_omega.append(somedict['freq_omega'][i])
+            ecc_phi_omega.append(somedict['phi_omega'][i])
+            ecc_A_amp.append(somedict['A_amp'][i])
+            ecc_B_amp.append(somedict['B_amp'][i])
+            ecc_freq_amp.append(somedict['freq_amp'][i])
+            ecc_phi_amp.append(somedict['phi_amp'][i])
+
+    par_omega=[ecc_A_omega,ecc_B_omega,ecc_freq_omega,ecc_phi_omega]
+    par_amp=[ecc_A_amp,ecc_B_amp,ecc_freq_amp,ecc_phi_amp]
+    return ecc_q,ecc_e,ecc_x,par_omega,par_amp
+
 #def compute_match_waves(new_time, test_time, test_h22, amp_recon,phase_recon,f_lower,sample_rate,psd='aLIGO'):
 
 #    delta_t=1./sample_rate

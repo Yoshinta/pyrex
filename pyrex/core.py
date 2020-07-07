@@ -97,11 +97,12 @@ class Cookware:
         training_dict=read_pkl(training)
 #TODO: perform the twis
         self.get_key_quant(training_dict)
-        amp_rec,phase_rec=eccentric_from_circular(self.omega_keys,self.amp_keys,training_dict['new_time'],laltime,lalamp,lalphase,lalomega)
+        newtime=training_dict['new_time']
+        amp_rec,phase_rec=eccentric_from_circular(self.omega_keys,self.amp_keys,newtime,laltime,lalamp,lalphase,lalomega)
 #TODO: define after mass scaling
         self.amp=amp_rec
         self.phase=phase_rec
-        self.time=training_dict['new_time']
+        self.time=newtime
         self.h22=amp_rec*exp(phase_rec*1j)
         #TODO: add the circular close to merger
         #TODO: rescale with total mass
@@ -144,11 +145,15 @@ class Cookware:
         #TODO: check/remove circular data training
         #TODO: compute x
         q=self.mass1/self.mass2
-        training_quant=[training_dict['q'],training_dict['e_ref'],training_dict['x']]
+        eq,ee,ex,eomg,eamp=get_noncirc_params(training_dict)
+        training_quant=[eq,ee,ex]
+        # training_quant=[training_dict['q'],training_dict['e_ref'],training_dict['x']]
         test_quant=[q,self.eccentricity,self.x]
-        par_omega=[training_dict['A_omega'],training_dict['B_omega'],training_dict['freq_omega'],training_dict['phi_omega']]
-        par_amp=[training_dict['A_amp'],training_dict['B_amp'],training_dict['freq_amp'],training_dict['phi_amp']]
-        A_omega,B_omega,freq_omega,phi_omega=Cookware.interpol_key_quant(training_quant,par_omega,test_quant)
-        A_amp,B_amp,freq_amp,phi_amp=Cookware.interpol_key_quant(training_quant,par_amp,test_quant)
+        #par_omega=[training_dict['A_omega'],training_dict['B_omega'],training_dict['freq_omega'],training_dict['phi_omega']]
+        #par_amp=[training_dict['A_amp'],training_dict['B_amp'],training_dict['freq_amp'],training_dict['phi_amp']]
+        #A_omega,B_omega,freq_omega,phi_omega=Cookware.interpol_key_quant(training_quant,par_omega,test_quant)
+        #A_amp,B_amp,freq_amp,phi_amp=Cookware.interpol_key_quant(training_quant,par_amp,test_quant)
+        A_omega,B_omega,freq_omega,phi_omega=Cookware.interpol_key_quant(training_quant,eomg,test_quant)
+        A_amp,B_amp,freq_amp,phi_amp=Cookware.interpol_key_quant(training_quant,eamp,test_quant)
         self.omega_keys=[A_omega,B_omega,freq_omega,phi_omega]
         self.amp_keys=[A_amp,B_amp,freq_amp,phi_amp]
