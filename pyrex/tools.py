@@ -342,7 +342,7 @@ def compute_residual(time_sample,component,deg=4):
 
     return res, B_sec
 
-def find_e_amp(ampli,ampli_circular,time,time_circular):
+def _find_e_amp(ampli,ampli_circular,time,time_circular):
     #TODO: delete this function
     """
         Computes eccentricity from a set of amplitude data.
@@ -371,7 +371,7 @@ def find_e_amp(ampli,ampli_circular,time,time_circular):
     return e_ampli
 
 
-def find_e_omega(omega,omega_circular,time,time_circular):
+def _find_e_omega(omega,omega_circular,time,time_circular):
     #TODO: delete this function
     """
         Computes eccentricity from omega (e_omega) from a set of omega data.
@@ -399,7 +399,7 @@ def find_e_omega(omega,omega_circular,time,time_circular):
     e_omg=(omega-omega_c_interp)/(2*(omega_c_interp))
     return e_omg
 
-def measure_e_amp(time,ampli,time_circular,amp_circular):
+def _measure_e_amp(time,ampli,time_circular,amp_circular):
     """
         Computes the eccentricity from amplitude.
 
@@ -427,7 +427,7 @@ def measure_e_amp(time,ampli,time_circular,amp_circular):
         e_amp.append(find_e_amp(ampli,amp_circular,time_circular,time[i]))
     return e_amp
 
-def measure_e_omega(time,h22,time_circular,h22_circular):
+def _measure_e_omega(time,h22,time_circular,h22_circular):
     """
         Computes the eccentricity from omega (see Husa08).
 
@@ -599,18 +599,34 @@ def eccentric_from_circular(par_omega,par_amp,new_time,time,amp,phase,omega,phas
 
     interp_omega=spline(time,omega)
     interp_amp=spline(time,amp)
-    omega_circ=-interp_omega(new_time)
-    amp_circ=interp_amp(new_time)
+    if time.all==new_time.all:
+        ntime=linspace(int(time[100]),-50.4,len(time))
+        new_time=ntime
+        omega_circ=-interp_omega(new_time)
+        amp_circ=interp_amp(new_time)
+        shift_omega=-interp_omega(-1500)
+        shift_amp=interp_amp(-1500)
 
-    x_omega=(omega_circ)**phase_pwr-((omega_circ[0])**phase_pwr)
-    x_amp=(amp_circ)**amp_pwr-(amp_circ[0])**amp_pwr
+    else:
+        omega_circ=-interp_omega(new_time)
+        amp_circ=interp_amp(new_time)
+        shift_omega=omega_circ[0]
+        shift_amp=amp_circ[0]
 
+    x_omega=(omega_circ)**phase_pwr-shift_omega**phase_pwr
+    x_amp=(amp_circ)**amp_pwr-shift_amp**amp_pwr
+
+    #print(x_omega)
     fit_ex_omega=f_sin(x_omega,par_omega[0],par_omega[1],par_omega[2],par_omega[3])
     fit_ex_amp=f_sin(x_amp,par_amp[0],par_amp[1],par_amp[2],par_amp[3])
     omega_rec=fit_ex_omega*2*omega_circ+omega_circ
     phase_rec=integrate.cumtrapz(omega_rec,new_time,initial=0)
     amp_rec=fit_ex_amp*2*amp_circ+amp_circ
-    return amp_rec,phase_rec
+    mask=isfinite(amp_rec)
+    amp_rec=amp_rec[mask]
+    phase_rec=phase_rec[mask]
+    new_time=new_time[mask]
+    return new_time,amp_rec,phase_rec
 
 def get_noncirc_params(somedict):
     ecc_q=[]
@@ -643,25 +659,13 @@ def get_noncirc_params(somedict):
     par_amp=[ecc_A_amp,ecc_B_amp,ecc_freq_amp,ecc_phi_amp]
     return ecc_q,ecc_e,ecc_x,par_omega,par_amp
 
-#def compute_match_waves(new_time, test_time, test_h22, amp_recon,phase_recon,f_lower,sample_rate,psd='aLIGO'):
-
-#    delta_t=1./sample_rate
-#    realh=spline(test_time,np.real(test_h22))
-#    imagh=spline(test_time,np.imag(test_h22))
-#    h_reckon=amp_recon*exp(phase_recon*1j)
-
-#    analytic_real_tser=TimeSeries(real(h_reckon),delta_t=delta_t)
-#    nr_real_tser=TimeSeries(realh(new_time),delta_t=delta_t)
-
-#    if psd=='aLIGO':
-#        tlen=len(h2o_tser)
-#        delta_f = 1.0 / nr_real_tser.duration
-#        flen = tlen//2 + 1
-#        psd = aLIGOZeroDetHighPower(flen, delta_f, f_lower)
-#    else:
-#        psd =None
-
-#    match22=match(analytic_real_tser,nr_real_tser,psd=psd,low_frequency_cutoff=f_lower)[0]
-#    overlap_amp=overlap(TimeSeries(amp_recon,delta_t=delta_t),TimeSeries(abs(realh(new_time)+imagh(new_time)*1j),delta_t=delta_t),psd=psd,low_frequency_cutoff=f_lower)
-#    overlap_phase=overlap(TimeSeries(phase_recon,delta_t=delta_t),TimeSeries(-np.unwrap(np.angle(realh(new_time)+imagh(new_time)*1j)),delta_t=delta_t),psd=psd,low_frequency_cutoff=f_lower)
-#    return match22,overlap_amp,overlap_phase
+__all__ = ["get_components", "t_align", "compute_omega",
+           "interp_omega",
+           "f_sin", "fit_sin",
+           "fitting_eccentric_function", "find_locals",
+           "find_roots", "find_intercept",
+           "compute_residual", "time_window_greater",
+           "noisy_peaks", "find_Y22",
+           "find_x", "lal_waves",
+           "lalwaves_to_nr_scale", "eccentric_from_circular",
+           "get_noncirc_params"]

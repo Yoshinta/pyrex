@@ -36,6 +36,7 @@ import glob
 import os
 from scipy import interpolate
 from pyrex.decor import *
+import statistics
 
 def read_HDF5(file_dir):
     """
@@ -174,9 +175,12 @@ def check_total_spin(spinx,spiny,spinz):
 
         Returns
         ------
-        spinx: Normalized dimensionless spin in x direction
-        spiny: Normalized dimensionless spin in y direction
-        spinz: Normalized dimensionless spin in z direction
+        spinx: {float}
+            Normalized dimensionless spin in x direction
+        spiny: {float}
+            Normalized dimensionless spin in y direction
+        spinz: {float}
+            Normalized dimensionless spin in z direction
     """
     tspin=sqrt(spinx**2+spiny**2+spinz**2)
     if (tspin>1):
@@ -221,7 +225,67 @@ def checkIfFilesExist(message,dirfile="../data/"):
 
 def interp1D(trainkey,trainval,testkey):
     '''
-        Interpolate 1D.
+        Perform 1D interpolation.
+
+        Parameters
+        ----------
+        trainkey: []
+                Array of the x interpolation values.
+        trainval: []
+                Array of the y interpolation values.
+        testkey: []
+                The position of the new x for interpolation.
+
+        Returns
+        ------
+        result: []
+                The interpolated value in 1 dimension.
+
     '''
-    interp=interpolate.interp1d(trainkey,trainval)
-    return(interp(testkey))
+    newkey,newval=check_duplicate_training(trainkey,trainval)
+
+    if testkey<min(trainkey) or testkey>max(trainkey):
+        interp=interpolate.interp1d(newkey,newval, fill_value='extrapolate')
+        result=interp(testkey)
+    else:
+        interp=interpolate.interp1d(trainkey,trainval)
+        result=interp(testkey)
+    return result
+
+def check_duplicate_training(trainkey,trainval):
+    '''
+        Check if the training keys have duplicate numbers.
+        If so, get its average values before performing interpolation.
+        Parameters
+        ----------
+        trainkey: []
+                Array of the x interpolation values.
+        trainval: {float}
+                Array of the y interpolation values.
+
+        Returns
+        ------
+        newkey: []
+                The new x interpolation values (no duplicates).
+        newval: []
+                The new y interpolation values, average of the old trainval with duplicate trainkey.
+
+    '''
+    d = {}
+    newkey=[]
+    newval=[]
+
+    for a, b in zip(list(trainkey), list(trainval)):
+        d.setdefault(a, []).append(b)
+
+    for key in d:
+        newkey.append(key)
+        newval.append(statistics.median(d[key]))
+    return newkey,newval
+
+__all__ = ["read_HDF5", "write_HDF5", "read_pkl",
+           "write_pkl",
+           "masses_from_eta", "masses_from_q",
+           "check_total_spin", "filter_dicts",
+           "checkIfDuplicates", "checkIfFilesExist",
+           "interp1D","check_duplicate_training"]

@@ -34,6 +34,7 @@ from pyrex.decor import *
 from pyrex.tools import *
 from pyrex.basics import *
 from scipy.signal import savgol_filter
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
 class Glassware(object):
    """

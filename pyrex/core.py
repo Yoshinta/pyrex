@@ -97,12 +97,12 @@ class Cookware:
         training_dict=read_pkl(training)
 #TODO: perform the twis
         self.get_key_quant(training_dict)
-        newtime=training_dict['new_time']
-        amp_rec,phase_rec=eccentric_from_circular(self.omega_keys,self.amp_keys,newtime,laltime,lalamp,lalphase,lalomega)
+        newtime=laltime#training_dict['new_time']
+        timenew,amp_rec,phase_rec=eccentric_from_circular(self.omega_keys,self.amp_keys,newtime,laltime,lalamp,lalphase,lalomega)
 #TODO: define after mass scaling
         self.amp=amp_rec
         self.phase=phase_rec
-        self.time=newtime
+        self.time=timenew#newtime
         self.h22=amp_rec*exp(phase_rec*1j)
         #TODO: add the circular close to merger
         #TODO: rescale with total mass
@@ -110,8 +110,10 @@ class Cookware:
    @staticmethod
    def checkEccentricInp(mass1,mass2,eccentricity):
        ori_total_mass=mass1+mass2
-       if eccentricity<0. or eccentricity>0.2:
-           error("This version has only been calibrated up to eccentricity<0.2.")
+       if eccentricity<0. or (eccentricity>0.2 and eccentricity<1.):
+           warning("This version has only been calibrated up to eccentricity<0.2.")
+       elif eccentricity>=1.:
+           error("Change eccentricity value (e<1)!")
        else:
            pass
 
@@ -135,14 +137,14 @@ class Cookware:
         '''
             Interpolate key quantities.
         '''
-        A=interp1D(training_quant[1],training_keys[0],test_quant[1])
+        A=float(interp1D(training_quant[1],training_keys[0],test_quant[1]))
         B=log((interp1D(training_quant[1],training_keys[0]*exp(training_keys[1]),test_quant[1]))/asarray(A))
-        freq=sqrt(interp1D(asarray(training_quant[0]),asarray(training_keys[2])**2,test_quant[0]))
-        phi=interp1D(asarray(training_quant[2]),asarray(training_keys[3]),asarray(test_quant[2]))
+        freq=sqrt(1./(interp1D(asarray(training_quant[0]),1./asarray(training_keys[2])**2,test_quant[0])))
+        phi=float(interp1D(asarray(training_quant[2]),asarray(training_keys[3]),asarray(test_quant[2])))
         return A,B,freq,phi
 
    def get_key_quant(self,training_dict):
-        #TODO: check/remove circular data training
+        #remove circular data training
         #TODO: compute x
         q=self.mass1/self.mass2
         eq,ee,ex,eomg,eamp=get_noncirc_params(training_dict)
