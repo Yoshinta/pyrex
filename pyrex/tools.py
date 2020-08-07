@@ -504,24 +504,6 @@ def noisy_peaks(data,prominence=0.1):
     peaks,_ = find_peaks(data,prominence=0.1)
     return peaks
 
-def find_Y22(iota,coa_phi):
-    '''
-        Compute Y22 of spherical harmonics waveform.
-        Source: https://arxiv.org/abs/0709.0093.
-        Parameters
-        ----------
-        iota: {float}
-                Inclination angle (rad).
-        phi : {float}
-                Phase of coalescence (rad).
-
-        Returns
-        ------
-        Y22 : Spherical harmonics of the l=2, m=2 mode.
-    '''
-    Y22=sqrt(5./(64*pi))*((1+cos(iota))**2)*exp(2*coa_phi*1j)
-    return Y22
-
 def find_x(old_time,omega,new_time):
     '''
         Compute x at the beginning of new time array.
@@ -583,7 +565,7 @@ def lal_waves(q,total_mass,approximant,f_lower,distance,inclination,coa_phase,**
 def lalwaves_to_nr_scale(q,total_mass,approximant,f_low,distance,iota,coa_phi,sample_rate):
     dt=1./sample_rate
     #Beware: numerical error 1e-30 when return the scale back! More obvious on phase.
-    amp_scale=total_mass*lal.MTSUN_SI*lal.C_SI/(1e6*distance*lal.PC_SI)
+    amp_scale=NR_amp_scale(total_mass,distance)
     sample_times,hp,hc=lal_waves(q,total_mass,approximant,f_low,distance,iota,coa_phi,delta_t=dt)
     h2=hp+hc*1j
     Y22=find_Y22(iota,coa_phi)
@@ -659,13 +641,25 @@ def get_noncirc_params(somedict):
     par_amp=[ecc_A_amp,ecc_B_amp,ecc_freq_amp,ecc_phi_amp]
     return ecc_q,ecc_e,ecc_x,par_omega,par_amp
 
+def near_merger(time,new_time,amp,phase):
+
+    interp_amp=spline(time,amp)
+    interp_phase=spline(time,phase)
+    end_time=int(time[::-1][0])
+    deltat=new_time[1]-new_time[0]
+    near_merger_time=arange(-50.4+deltat,end_time,deltat)
+    new_amp=interp_amp(near_merger_time)
+    new_phase=interp_phase(near_merger_time)
+    return near_merger_time,new_amp,new_phase
+
+
 __all__ = ["get_components", "t_align", "compute_omega",
            "interp_omega",
            "f_sin", "fit_sin",
            "fitting_eccentric_function", "find_locals",
            "find_roots", "find_intercept",
            "compute_residual", "time_window_greater",
-           "noisy_peaks", "find_Y22",
-           "find_x", "lal_waves",
-           "lalwaves_to_nr_scale", "eccentric_from_circular",
-           "get_noncirc_params"]
+           "noisy_peaks", "find_x",
+           "lal_waves", "lalwaves_to_nr_scale",
+           "eccentric_from_circular", "get_noncirc_params",
+           "near_merger"]

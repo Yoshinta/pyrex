@@ -33,6 +33,7 @@ from numpy import *
 from pyrex.decor import *
 from pyrex.tools import *
 from pyrex.basics import *
+import lal
 
 
 class Cookware:
@@ -100,12 +101,18 @@ class Cookware:
         newtime=laltime#training_dict['new_time']
         timenew,amp_rec,phase_rec=eccentric_from_circular(self.omega_keys,self.amp_keys,newtime,laltime,lalamp,lalphase,lalomega)
 #TODO: define after mass scaling
-        self.amp=amp_rec
-        self.phase=phase_rec
-        self.time=timenew#newtime
-        self.h22=amp_rec*exp(phase_rec*1j)
-        #TODO: add the circular close to merger
-        #TODO: rescale with total mass
+        late_time,late_amp,late_phase=near_merger(laltime,timenew,lalamp,lalphase)
+        self.amp=concatenate((amp_rec,late_amp))
+        self.phase=concatenate((phase_rec,late_phase))
+#TODO:check time scaling
+        timescale=((self.mass1+self.mass2)*lal.MTSUN_SI)
+        amp_scale=NR_amp_scale((self.mass1+self.mass2),self.distance)
+        Y22=find_Y22(self.inclination,self.coa_phase)
+#rescale with total mass
+        h22_model=(self.amp*exp(self.phase*1j))*(amp_scale*Y22)
+        self.time=concatenate((timenew,late_time))*timescale#
+        self.h22=real(h22_model)-imag(h22_model)*1j
+#TODO: add circular close to merger
 
    @staticmethod
    def checkEccentricInp(mass1,mass2,eccentricity):

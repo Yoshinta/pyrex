@@ -37,6 +37,7 @@ import os
 from scipy import interpolate
 from pyrex.decor import *
 import statistics
+import lal
 
 def read_HDF5(file_dir):
     """
@@ -283,9 +284,31 @@ def check_duplicate_training(trainkey,trainval):
         newval.append(statistics.median(d[key]))
     return newkey,newval
 
+def find_Y22(iota,coa_phi):
+    '''
+        Compute Y22 of spherical harmonics waveform.
+        Source: https://arxiv.org/abs/0709.0093.
+        Parameters
+        ----------
+        iota: {float}
+                Inclination angle (rad).
+        phi : {float}
+                Phase of coalescence (rad).
+
+        Returns
+        ------
+        Y22 : Spherical harmonics of the l=2, m=2 mode.
+    '''
+    Y22=sqrt(5./(64*pi))*((1+cos(iota))**2)*exp(2*coa_phi*1j)
+    return Y22
+
+def NR_amp_scale(total_mass,distance):
+    return total_mass*lal.MTSUN_SI*lal.C_SI/(1e6*distance*lal.PC_SI)
+
 __all__ = ["read_HDF5", "write_HDF5", "read_pkl",
            "write_pkl",
            "masses_from_eta", "masses_from_q",
            "check_total_spin", "filter_dicts",
            "checkIfDuplicates", "checkIfFilesExist",
-           "interp1D","check_duplicate_training"]
+           "interp1D", "check_duplicate_training",
+           "find_Y22", "NR_amp_scale"]
