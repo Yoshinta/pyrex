@@ -94,25 +94,42 @@ class Cookware:
         training=checkIfFilesExist(message="training data found: ")
 #generate analytic waveform
         laltime,lalamp,lalphase,lalomega=lalwaves_to_nr_scale(q,total_mass,self.approximant,f_low,self.distance,self.inclination,self.coa_phase,sample_rate)
-#read training file
-        training_dict=read_pkl(training)
-#TODO: perform the twis
-        self.get_key_quant(training_dict)
         newtime=laltime#training_dict['new_time']
-        timenew,amp_rec,phase_rec=eccentric_from_circular(self.omega_keys,self.amp_keys,newtime,laltime,lalamp,lalphase,lalomega)
-#TODO: define after mass scaling
-        late_time,late_amp,late_phase=near_merger(laltime,timenew,lalamp,lalphase)
-        self.amp=concatenate((amp_rec,late_amp))
-        self.phase=concatenate((phase_rec,late_phase))
-#TODO:check time scaling
-        timescale=((self.mass1+self.mass2)*lal.MTSUN_SI)
-        amp_scale=NR_amp_scale((self.mass1+self.mass2),self.distance)
         Y22=find_Y22(self.inclination,self.coa_phase)
+        Y2_2=find_Y2minus2(self.inclination,self.coa_phase)
+        training_dict=read_pkl(training)
+        self.get_key_quant(training_dict)
+#read training file
+        if eccentricity>3e-2:
+#TODO: perform the twis
+            t22,amp22_model,phase22_model,h22_model=Cookware.construct(self,newtime,laltime,lalamp[0],lalphase[0],lalomega[0],Y22)
+            t2_2,amp2_2_model,phase2_2_model,h2_2_model=Cookware.construct(self,newtime,laltime,lalamp[1],lalphase[1],lalomega[1],Y2_2)
+            t22,amp22_model,phase22_model,h22_model,t2_2,amp2_2_model,phase2_2_model,h2_2_model=sanity_modes(t22,amp22_model,phase22_model,h22_model,t2_2,amp2_2_model,phase2_2_model,h2_2_model)
 #rescale with total mass
-        h22_model=(self.amp*exp(self.phase*1j))*(amp_scale*Y22)
-        self.time=concatenate((timenew,late_time))*timescale#
-        self.h22=real(h22_model)-imag(h22_model)*1j
+        #h22_model=(self.amp*exp(self.phase*1j))*(amp_scale*Y22)
+        #self.time=concatenate((timenew,late_time))*timescale#
+            self.time=t22
+            self.Ylm=dict(Y22=Y22,Y2_2=Y2_2)
+            self.amp=dict(amp22=amp22_model,amp2_2=amp2_2_model)
+            self.phase=dict(phase22=phase22_model,phase2_2=phase2_2_model)
+            strain22=nan_to_num(real(h22_model)-imag(h22_model)*1j)
+            strain2_2=nan_to_num(real(h2_2_model)-imag(h2_2_model)*1j)
+            self.strain=dict(h22=strain22,h2_2=strain2_2)
+            #self.h22=self.strain['h22']+self.strain['h2_2']
 #TODO: add circular close to merger
+        else:
+            self.Ylm=dict(Y22=Y22,Y2_2=Y2_2)
+            self.time=laltime*((self.mass1+self.mass2)*lal.MTSUN_SI)
+            h22_model=lalamp[0]*exp(lalphase[0]*1j)*(NR_amp_scale(self.mass1+self.mass2,self.distance)*self.Ylm['Y22'])
+            h2_2_model=lalamp[1]*exp(lalphase[1]*1j)*(NR_amp_scale(self.mass1+self.mass2,self.distance)*self.Ylm['Y2_2'])
+            
+            self.amp=dict(amp22=abs(h22_model),amp2_2=abs(h2_2_model))
+            self.phase=dict(phase22=unwrap(angle(h22_model)),phase2_2=unwrap(angle(h2_2_model)))
+            
+            strain22=real(h22_model)-imag(h22_model)*1j
+            strain2_2=real(h2_2_model)-imag(h2_2_model)*1j
+            self.strain=dict(h22=strain22,h2_2=strain2_2)
+        self.h22=self.strain['h22']+self.strain['h2_2']
 
    @staticmethod
    def checkEccentricInp(mass1,mass2,eccentricity):
@@ -166,3 +183,20 @@ class Cookware:
         A_amp,B_amp,freq_amp,phi_amp=Cookware.interpol_key_quant(training_quant,eamp,test_quant)
         self.omega_keys=[A_omega,B_omega,freq_omega,phi_omega]
         self.amp_keys=[A_amp,B_amp,freq_amp,phi_amp]
+
+   @staticmethod
+   def construct(self,newtime,lmtime,lmamp,lmphase,lmomega,Ylm):
+       timenew,amp_rec,phase_rec=eccentric_from_circular(self.omega_keys,self.amp_keys,newtime,lmtime,lmamp,lmphase,lmomega)
+   #TODO: define after mass scaling
+       late_time,late_amp,late_phase=near_merger(lmtime,timenew,lmamp,lmphase)
+       amp_construct=concatenate((amp_rec,late_amp))
+       phase_construct=concatenate((phase_rec,late_phase))
+   #TODO:check time scaling
+       timescale=((self.mass1+self.mass2)*lal.MTSUN_SI)
+       amp_scale=NR_amp_scale((self.mass1+self.mass2),self.distance)
+   #rescale with total mass
+       h_model=(amp_construct*exp(phase_construct*1j))*(amp_scale*Ylm)
+       amp_model=abs(h_model)
+       phase_model=unwrap(angle(h_model))
+       time_construct=concatenate((timenew,late_time))*timescale
+       return time_construct,amp_model,phase_model,h_model

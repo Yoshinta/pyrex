@@ -38,6 +38,7 @@ from scipy import interpolate
 from pyrex.decor import *
 import statistics
 import lal
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
 def read_HDF5(file_dir):
     """
@@ -286,7 +287,7 @@ def check_duplicate_training(trainkey,trainval):
 
 def find_Y22(iota,coa_phi):
     '''
-        Compute Y22 of spherical harmonics waveform.
+        Compute Y_(2,2) of spherical harmonics waveform.
         Source: https://arxiv.org/abs/0709.0093.
         Parameters
         ----------
@@ -297,13 +298,70 @@ def find_Y22(iota,coa_phi):
 
         Returns
         ------
-        Y22 : Spherical harmonics of the l=2, m=2 mode.
+        Y_(2,2) : Spherical harmonics of the l=2, m=2 mode.
     '''
     Y22=sqrt(5./(64*pi))*((1+cos(iota))**2)*exp(2*coa_phi*1j)
     return Y22
 
+def find_Y2minus2(iota,coa_phi):
+    '''
+        Compute Y_(2,-2) of spherical harmonics waveform.
+        Source: https://arxiv.org/abs/0709.0093.
+        Parameters
+        ----------
+        iota: {float}
+                Inclination angle (rad).
+        phi : {float}
+                Phase of coalescence (rad).
+
+        Returns
+        ------
+        Y_(2,-2) : Spherical harmonics of the l=2, m=2 mode.
+    '''
+    Y2minus2=sqrt(5./(64*pi))*((1-cos(iota))**2)*exp(-2*coa_phi*1j)
+    return Y2minus2
+
 def NR_amp_scale(total_mass,distance):
     return total_mass*lal.MTSUN_SI*lal.C_SI/(1e6*distance*lal.PC_SI)
+
+def sanity_modes(t22,amp22_model,phase22_model,h22_model,t2_2,amp2_2_model,phase2_2_model,h2_2_model):
+    def interpolate_data(oldtime,newtime,amp,phase,h22):
+        interp_amp=spline(oldtime,amp)
+        interp_phase=spline(oldtime,phase)
+        interp_h_real=spline(oldtime,real(h22))
+        interp_h_imag=spline(oldtime,imag(h22))
+        newamp=interp_amp(newtime)
+        newphase=interp_phase(newtime)
+        newh=interp_h_real(newtime)+interp_h_imag(newtime)*1j
+        return newamp,newphase,newh
+
+    if len(t22)!=len(t2_2):
+        tbegin=max(t22[0],t2_2[0])
+        tfinal=min(t22[::-1][0],t2_2[::-1][0])
+        deltat=min(abs(t22[1]-t22[0]),abs(t2_2[1]-t2_2[0]))
+        t_join=arange(tbegin,tfinal,deltat)
+        amp22_model,phase22_model,h22_model=interpolate_data(t22,t_join,amp22_model,phase22_model,h22_model)
+        #elif len(t_join)!=len(t2_2):
+        amp2_2_model,phase2_2_model,h2_2_model=interpolate_data(t2_2,t_join,amp2_2_model,phase2_2_model,h2_2_model)
+    else:
+        t_join=t22
+    return t_join,amp22_model,phase22_model,h22_model,t2_2,amp2_2_model,phase2_2_model,h2_2_model
+
+def freqISCO(total_mass):
+    """
+        Compute ISCO frequency.
+        Parameters
+        ----------
+        total_mass: {float}
+                Total mass in MSun.
+
+        Returns
+        ------
+        ISCOfreq  : {float}
+                ISCO frequency of the system.
+    """
+    ISCOfreq=lal.C_SI**3/(pi*6**(3/2)*lal.G_SI*lal.MSUN_SI*total_mass)
+    return ISCOfreq
 
 __all__ = ["read_HDF5", "write_HDF5", "read_pkl",
            "write_pkl",
@@ -311,4 +369,6 @@ __all__ = ["read_HDF5", "write_HDF5", "read_pkl",
            "check_total_spin", "filter_dicts",
            "checkIfDuplicates", "checkIfFilesExist",
            "interp1D", "check_duplicate_training",
-           "find_Y22", "NR_amp_scale"]
+           "find_Y22", "find_Y2minus2",
+           "NR_amp_scale", "sanity_modes",
+           "freqISCO"]
