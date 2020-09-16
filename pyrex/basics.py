@@ -213,9 +213,9 @@ def checkIfFilesExist(message,dirfile="../data/"):
     '''
     r=0
     os.chdir(dirfile)
-    print(message)
+    #print(message)
     for file in glob.glob("*.pkl"):
-        print(file)
+        #print(file)
         r=r+1
     if r<1:
         error("No *pkl files found in " + str(dirfile) + " . Please run 'example/traindata.py' to produce the train data.")

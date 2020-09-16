@@ -77,9 +77,9 @@ def get_components(data_path):
      phase22 = -unwrap(angle(h22))
      return times,amp22,phase22,h22
 
-def t_align(names,data_path,dt=0.4,t_junk=250.,t_circ=-50):
+def t_align(names,data_path,dt=0.4,t_junk=250.,t_circ=-29):
     """
-        Align waveform such that the peak amplitude is at t=0 and chopped -50M before merger (max t).
+        Align waveform such that the peak amplitude is at t=0 and chopped -29M before merger (max t).
         Modify the delta t of every waveform with the same number.
 
         Parameters
@@ -91,7 +91,7 @@ def t_align(names,data_path,dt=0.4,t_junk=250.,t_circ=-50):
         dt          : {float}
                    delta t of the new time samples. Default 0.4.
         t_chopped   : {float}
-                   t final before binary circularizes. Default -50M.
+                   t final before binary circularizes. Default -29M.
 
         Returns
         ------
@@ -586,7 +586,7 @@ def lalwaves_to_nr_scale(q,total_mass,approximant,f_low,distance,iota,coa_phi,sa
     #h2=hp+hc*1j
     Y22=find_Y22(iota,coa_phi)
     Y2_2=find_Y2minus2(iota,coa_phi)
-    
+
     if Y2_2<1e-4 and Y22>Y2_2:
         h2_2=zeros(len(H22))
         h22=H22
@@ -609,7 +609,8 @@ def lalwaves_to_nr_scale(q,total_mass,approximant,f_low,distance,iota,coa_phi,sa
     return time,amp,phase,omega
 
 def eccentric_from_circular(par_omega,par_amp,new_time,time,amp,phase,omega,phase_pwr=-59./24,amp_pwr=-83./24):
-    ntime=linspace(int(time[100]),-50.4,len(time))
+    dt=float(time[501])-float(time[500])
+    ntime=arange(float(time[500]),-29.,dt)#inspace(int(time[100]),-50.4,len(time))
     if max(abs(omega))==0:
         new_time=ntime
         amp_rec=zeros(len(new_time))
@@ -628,8 +629,8 @@ def eccentric_from_circular(par_omega,par_amp,new_time,time,amp,phase,omega,phas
             amp_circ=interp_amp(new_time)
             shift_omega=omega_circ[0]
             shift_amp=amp_circ[0]
-        x_omega=(-omega_circ)**phase_pwr-(-shift_omega)**phase_pwr
-        x_amp=(amp_circ)**amp_pwr-shift_amp**amp_pwr
+        x_omega=nan_to_num((-omega_circ)**phase_pwr-(-shift_omega)**phase_pwr)
+        x_amp=nan_to_num((amp_circ)**amp_pwr-shift_amp**amp_pwr)
     #print(x_omega)
         fit_ex_omega=f_sin(x_omega,par_omega[0],par_omega[1],par_omega[2],par_omega[3])
         fit_ex_amp=f_sin(x_amp,par_amp[0],par_amp[1],par_amp[2],par_amp[3])
@@ -656,7 +657,7 @@ def get_noncirc_params(somedict):
     ecc_phi_amp=[]
 
     for i in range(len(somedict['names'])):
-        if somedict['e_ref'][i]>1e-3:
+        if somedict['e_ref'][i]>3e-3:
             ecc_q.append(somedict['q'][i])
             ecc_e.append(somedict['e_ref'][i])
             ecc_x.append(somedict['x'][i])
@@ -679,7 +680,7 @@ def near_merger(time,new_time,amp,phase):
     interp_phase=spline(time,phase)
     end_time=int(time[::-1][0])
     deltat=new_time[1]-new_time[0]
-    near_merger_time=arange(-50.4+deltat,end_time,deltat)
+    near_merger_time=arange(-29.+deltat,end_time,deltat)
     new_amp=interp_amp(near_merger_time)
     new_phase=interp_phase(near_merger_time)
     return near_merger_time,new_amp,new_phase

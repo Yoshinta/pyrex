@@ -167,9 +167,10 @@ class Glassware(object):
 
        """
        begin_tm=-1500.
-       end_tm=-50.4
-       len_tm=15000
-       new_time=linspace(begin_tm,end_tm,len_tm)
+       end_tm=-29.
+       len_tm=15221#15000
+       #dt=0.09664644309623327
+       new_time=linspace(begin_tm,end_tm,len_tm)#arange(begin_tm,end_tm,dt)
 
        circ_names,circ_q,circ_time,circ_amp,circ_phase,circ_omega=Glassware.check_double_circ(self)
 

@@ -40,7 +40,7 @@ class Cookware:
    """
    	A class to twist any analytic circular waveforms into eccentric model.
    """
-   def __init__(self,approximant,mass1,mass2,spin1x,spin1y,spin1z,spin2x,spin2y,spin2z,eccentricity,x,inclination,distance,coa_phase,sample_rate=4096.):
+   def __init__(self,approximant,mass1,mass2,spin1x,spin1y,spin1z,spin2x,spin2y,spin2z,eccentricity,x,varphi,inclination,distance,coa_phase,sample_rate=4096.):
         """
             Initiates Cookware class for non-spinning, low eccentricity, and mass ratio<=3 binaries.
 
@@ -84,6 +84,7 @@ class Cookware:
         self.distance=distance
         self.coa_phase=coa_phase
         self.x=x
+        self.varphi=varphi
 
         total_mass=50.
         f_low=25.
@@ -112,8 +113,8 @@ class Cookware:
             self.Ylm=dict(Y22=Y22,Y2_2=Y2_2)
             self.amp=dict(amp22=amp22_model,amp2_2=amp2_2_model)
             self.phase=dict(phase22=phase22_model,phase2_2=phase2_2_model)
-            strain22=nan_to_num(real(h22_model)-imag(h22_model)*1j)
-            strain2_2=nan_to_num(real(h2_2_model)-imag(h2_2_model)*1j)
+            strain22=nan_to_num(real(h22_model)+imag(h22_model)*1j)
+            strain2_2=nan_to_num(real(h2_2_model)+imag(h2_2_model)*1j)
             self.strain=dict(h22=strain22,h2_2=strain2_2)
             #self.h22=self.strain['h22']+self.strain['h2_2']
 #TODO: add circular close to merger
@@ -122,10 +123,10 @@ class Cookware:
             self.time=laltime*((self.mass1+self.mass2)*lal.MTSUN_SI)
             h22_model=lalamp[0]*exp(lalphase[0]*1j)*(NR_amp_scale(self.mass1+self.mass2,self.distance)*self.Ylm['Y22'])
             h2_2_model=lalamp[1]*exp(lalphase[1]*1j)*(NR_amp_scale(self.mass1+self.mass2,self.distance)*self.Ylm['Y2_2'])
-            
+
             self.amp=dict(amp22=abs(h22_model),amp2_2=abs(h2_2_model))
             self.phase=dict(phase22=unwrap(angle(h22_model)),phase2_2=unwrap(angle(h2_2_model)))
-            
+
             strain22=real(h22_model)-imag(h22_model)*1j
             strain2_2=real(h2_2_model)-imag(h2_2_model)*1j
             self.strain=dict(h22=strain22,h2_2=strain2_2)
@@ -161,10 +162,12 @@ class Cookware:
         '''
             Interpolate key quantities.
         '''
-        A=float(interp1D(training_quant[1],training_keys[0],test_quant[1]))
-        B=log((interp1D(training_quant[1],training_keys[0]*exp(training_keys[1]),test_quant[1]))/asarray(A))
+        forA=float(interp1D(training_quant[1],training_keys[0],test_quant[1]))
+        A=float(interp1D(training_quant[1],abs(asarray(training_keys[0])),test_quant[1]))
+        B=log((interp1D(training_quant[1],training_keys[0]*exp(training_keys[1]),test_quant[1]))/asarray(forA))
         freq=sqrt(1./(interp1D(asarray(training_quant[0]),1./asarray(training_keys[2])**2,test_quant[0])))
         phi=float(interp1D(asarray(training_quant[2]),asarray(training_keys[3]),asarray(test_quant[2])))
+
         return A,B,freq,phi
 
    def get_key_quant(self,training_dict):
@@ -181,6 +184,8 @@ class Cookware:
         #A_amp,B_amp,freq_amp,phi_amp=Cookware.interpol_key_quant(training_quant,par_amp,test_quant)
         A_omega,B_omega,freq_omega,phi_omega=Cookware.interpol_key_quant(training_quant,eomg,test_quant)
         A_amp,B_amp,freq_amp,phi_amp=Cookware.interpol_key_quant(training_quant,eamp,test_quant)
+        phi_omega=self.varphi[1]
+        phi_amp=self.varphi[0]
         self.omega_keys=[A_omega,B_omega,freq_omega,phi_omega]
         self.amp_keys=[A_amp,B_amp,freq_amp,phi_amp]
 
