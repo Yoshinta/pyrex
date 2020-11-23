@@ -77,9 +77,9 @@ def get_components(data_path):
      phase22 = -unwrap(angle(h22))
      return times,amp22,phase22,h22
 
-def t_align(names,data_path,dt=0.4,t_junk=250.,t_circ=-29):
+def t_align(names,data_path,dt=0.4,t_junk=250.,t_circ=-49):
     """
-        Align waveform such that the peak amplitude is at t=0 and chopped -29M before merger (max t).
+        Align waveform such that the peak amplitude is at t=0 and chopped -49M before merger (max t).
         Modify the delta t of every waveform with the same number.
 
         Parameters
@@ -91,7 +91,7 @@ def t_align(names,data_path,dt=0.4,t_junk=250.,t_circ=-29):
         dt          : {float}
                    delta t of the new time samples. Default 0.4.
         t_chopped   : {float}
-                   t final before binary circularizes. Default -29M.
+                   t final before binary circularizes. Default -49M.
 
         Returns
         ------
@@ -610,7 +610,7 @@ def lalwaves_to_nr_scale(q,total_mass,approximant,f_low,distance,iota,coa_phi,sa
 
 def eccentric_from_circular(par_omega,par_amp,new_time,time,amp,phase,omega,phase_pwr=-59./24,amp_pwr=-83./24):
     dt=float(time[501])-float(time[500])
-    ntime=arange(float(time[500]),-29.,dt)#inspace(int(time[100]),-50.4,len(time))
+    ntime=arange(float(time[500]),-49.,dt)#inspace(int(time[100]),-50.4,len(time))
     if max(abs(omega))==0:
         new_time=ntime
         amp_rec=zeros(len(new_time))
@@ -680,11 +680,33 @@ def near_merger(time,new_time,amp,phase):
     interp_phase=spline(time,phase)
     end_time=int(time[::-1][0])
     deltat=new_time[1]-new_time[0]
-    near_merger_time=arange(-29.+deltat,end_time,deltat)
+    near_merger_time=arange(-49.+deltat,end_time,deltat)
     new_amp=interp_amp(near_merger_time)
     new_phase=interp_phase(near_merger_time)
     return near_merger_time,new_amp,new_phase
 
+def smooth_joint(x,y,total_mass):
+    """
+        Smooth the joint curve of the twist and the late merger.
+        Parameters
+        ----------
+        x        : []
+                   Full time array of the curve.
+        y        : []
+                   Full amplitude array of the curve.
+
+        Returns
+        ------
+        y_inter   : []
+                    Smoothed amplitude array.
+    """
+
+    tarray=where(logical_and(x<-31*total_mass*lal.MTSUN_SI,x>=-80*total_mass*lal.MTSUN_SI))
+    first=tarray[0][0]
+    last=tarray[0][-1]
+    y[first:last] = interp(x[first:last], [x[first], x[last]],  [y[first], y[last]])
+    y_inter = savgol_filter(y, 31, 3)
+    return y_inter
 
 __all__ = ["get_components", "t_align", "compute_omega",
            "interp_omega",
@@ -695,4 +717,5 @@ __all__ = ["get_components", "t_align", "compute_omega",
            "noisy_peaks", "find_x",
            "lal_waves", "get_nr_hlm",
            "lalwaves_to_nr_scale", "eccentric_from_circular",
-           "get_noncirc_params", "near_merger"]
+           "get_noncirc_params", "near_merger",
+           "smooth_joint"]
