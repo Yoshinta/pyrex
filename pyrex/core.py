@@ -205,5 +205,6 @@ class Cookware:
        phase_model=unwrap(angle(h_model))
        time_construct=concatenate((timenew,late_time))*timescale
        amp_model=smooth_joint(time_construct,amp_model,(self.mass1+self.mass2))
+       phase_model=smooth_joint(time_construct,phase_model,(self.mass1+self.mass2))
        h_model=amp_model*exp(phase_model*1j)
        return time_construct,amp_model,phase_model,h_model
