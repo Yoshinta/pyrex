@@ -77,9 +77,9 @@ def get_components(data_path):
      phase22 = -unwrap(angle(h22))
      return times,amp22,phase22,h22
 
-def t_align(names,data_path,dt=0.4,t_junk=250.,t_circ=-49):
+def t_align(names,data_path,dt=0.4,t_junk=250.,t_circ=-29.):
     """
-        Align waveform such that the peak amplitude is at t=0 and chopped -49M before merger (max t).
+        Align waveform such that the peak amplitude is at t=0 and chopped -29M before merger (max t).
         Modify the delta t of every waveform with the same number.
 
         Parameters
@@ -91,7 +91,7 @@ def t_align(names,data_path,dt=0.4,t_junk=250.,t_circ=-49):
         dt          : {float}
                    delta t of the new time samples. Default 0.4.
         t_chopped   : {float}
-                   t final before binary circularizes. Default -49M.
+                   t final before binary circularizes. Default -29M.
 
         Returns
         ------
@@ -224,7 +224,6 @@ def fit_sin(xdata, ydata):
         fit_result  : []
                     1 dimensional array of the fitted data.
     """
-
     popt,pcov = curve_fit(f_sin, xdata, ydata)
     fit_result=f_sin(xdata,*popt)
     return popt,fit_result
@@ -610,7 +609,7 @@ def lalwaves_to_nr_scale(q,total_mass,approximant,f_low,distance,iota,coa_phi,sa
 
 def eccentric_from_circular(par_omega,par_amp,new_time,time,amp,phase,omega,phase_pwr=-59./24,amp_pwr=-83./24):
     dt=float(time[501])-float(time[500])
-    ntime=arange(float(time[500]),-49.,dt)#inspace(int(time[100]),-50.4,len(time))
+    ntime=arange(float(time[500]),-49,dt)#inspace(int(time[100]),-50.4,len(time))
     if max(abs(omega))==0:
         new_time=ntime
         amp_rec=zeros(len(new_time))
