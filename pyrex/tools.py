@@ -445,7 +445,7 @@ def _measure_e_omega(time,h22,time_circular,h22_circular):
         Returns
         ------
         e_omg   : []
-                Array of eccenntricity omega as time function.
+                Array of eccentricity omega as time function.
 
     """
 
@@ -609,7 +609,7 @@ def lalwaves_to_nr_scale(q,total_mass,approximant,f_low,distance,iota,coa_phi,sa
 
 def eccentric_from_circular(par_omega,par_amp,new_time,time,amp,phase,omega,phase_pwr=-59./24,amp_pwr=-83./24):
     dt=float(time[501])-float(time[500])
-    ntime=arange(float(time[500]),-49,dt)#inspace(int(time[100]),-50.4,len(time))
+    ntime=arange(float(time[500]),-29.,dt)#inspace(int(time[100]),-50.4,len(time))
     if max(abs(omega))==0:
         new_time=ntime
         amp_rec=zeros(len(new_time))
@@ -679,7 +679,7 @@ def near_merger(time,new_time,amp,phase):
     interp_phase=spline(time,phase)
     end_time=int(time[::-1][0])
     deltat=new_time[1]-new_time[0]
-    near_merger_time=arange(-49.+deltat,end_time,deltat)
+    near_merger_time=arange(-29.+deltat,end_time,deltat)
     new_amp=interp_amp(near_merger_time)
     new_phase=interp_phase(near_merger_time)
     return near_merger_time,new_amp,new_phase
@@ -700,10 +700,12 @@ def smooth_joint(x,y,total_mass):
                     Smoothed amplitude array.
     """
 
-    tarray=where(logical_and(x<-31*total_mass*lal.MTSUN_SI,x>=-80*total_mass*lal.MTSUN_SI))
+    tarray=where(logical_and(x<-25*total_mass*lal.MTSUN_SI,x>=-46*total_mass*lal.MTSUN_SI))
+    #tarray=where(logical_and(x<-31*total_mass*lal.MTSUN_SI,x>=-80*total_mass*lal.MTSUN_SI))
     first=tarray[0][0]
     last=tarray[0][-1]
     y[first:last] = interp(x[first:last], [x[first], x[last]],  [y[first], y[last]])
+    #y[first:last] = savgol_filter(y[first:last], 9, 3)
     y_inter = savgol_filter(y, 31, 3)
     return y_inter
 
