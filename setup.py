@@ -28,7 +28,7 @@ with open('README.md', 'r') as f:
     readme = f.read()
 
 setup(name='pyrex',
-      version='0.0.5',
+      version='0.2.0',
       description='Python package for transforming circular gravitational waveforms to low-exentric waveforms from numerical simulations.',
       long_description=readme,
       author='Yoshinta Setyawati',
