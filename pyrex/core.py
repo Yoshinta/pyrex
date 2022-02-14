@@ -40,28 +40,44 @@ class Cookware:
    """
    	A class to twist any analytic circular waveforms into eccentric model.
    """
-   def __init__(self,approximant,mass1,mass2,spin1x,spin1y,spin1z,spin2x,spin2y,spin2z,eccentricity,x,varphi,inclination,distance,coa_phase,sample_rate=4096.):
+   def __init__(self,approximant,mass1,mass2,spin1x,spin1y,spin1z,spin2x,spin2y,spin2z,eccentricity,inclination,distance,coa_phase,varphi=[0,0],x=0,sample_rate=4096.):
         """
             Initiates Cookware class for non-spinning, low eccentricity, and mass ratio<=3 binaries.
 
             Parameters
             ----------
             mass1         : {float}
-            		  Mass of the hevaiest object (MSun).
+            		  Mass of the heaviest object (MSun).
             mass2         : {float}
-                      Dimensionless spin parameters.
+                          Mass of the lighter object (MSun).
             approximant   : {str}
-                      Waveform approximant of analytic waves.
-
-            chi           : {float}
-                      Spin of the system.
+                         Waveform approximant of the quasicircular nonspinning model.
+            spin1x        : {float}
+                         Spin 1x of the system.
+	    spin1y        : {float}
+                         Spin 1y of the system.
+            spin1z        : {float}
+                         Spin 1z of the system.
+            spin2x        : {float}
+                         Spin 2x of the system.
+            spin2y        : {float}
+                         Spin 2y of the system.
+            spin2z        : {float}
+                         Spin 2z of the system.
+            eccentricity  : {float}
+       	                 The desired eccentricity, between 0-1. 
+                         However, this model has only been calibrated up to eccentricity=0.3.
+            varphi        : []
+       	                 Phase maximization (default varphi=[0,0]).
             distance      : {float}
-                      Distance of the two bodies (Mpc).
+                         Distance of the two bodies (Mpc).
             inclination   : {float}
-                      Inclination angle (rad).
+                         Inclination angle (rad).
             coa_phase     : {float}
-                      Coalescence phase (rad).
-
+                         Coalescence phase (rad).
+            sample_rate    : {float}
+                         Sampling rate (default=4096).
+           
             Returns
             ------
             times         : []
